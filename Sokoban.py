@@ -1,0 +1,2 @@
+def Sokobansolve():
+    pass
