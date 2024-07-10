@@ -249,7 +249,7 @@ def PrintSokobanMap(playerPoint: tuple[int, int], boxPoint: tuple[int, int]) -> 
                 printMap[i][j] = "🛑 "
     printMap[endPoint[0]][endPoint[1]] = "⭕ "
     printMap[playerPoint[0]][playerPoint[1]] = "😋 "
-    printMap[boxPoint[0]][boxPoint[1]] = " "
+    printMap[boxPoint[0]][boxPoint[1]] = "📦 "
     for i in range(matrixSize):
         c = ""
         for j in range(matrixSize):
