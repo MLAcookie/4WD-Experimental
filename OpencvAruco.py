@@ -9,12 +9,12 @@ arucoCodeList = [0, 1]
 class ObjectType(Enum):
     box = 0
     barrier = 1
-    none = 2
+    null = 2
 
 
 def IsInCodeList(ids: list) -> ObjectType:
     if ids is None:
-        return ObjectType.none
+        return ObjectType.null
     id_to_type = {
         arucoCodeList[0]: ObjectType.box,
         arucoCodeList[1]: ObjectType.barrier,
@@ -22,7 +22,7 @@ def IsInCodeList(ids: list) -> ObjectType:
     for id in ids:
         if id[0] in id_to_type:
             return id_to_type[id[0]]
-    return ObjectType.none
+    return ObjectType.null
 
 
 def ScanHasArucoCode(mat: np.matrix, scale: float = 1):

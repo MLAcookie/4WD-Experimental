@@ -1,25 +1,53 @@
 from enum import Enum
 from queue import PriorityQueue, Queue
 
+matrixSize = 0
 
-class Orientation(Enum):
-    left = 0
-    up = 1
-    right = 2
-    down = 3
+
+class Operation(Enum):
+    moveLeft = 0
+    moveUp = 1
+    moveRight = 2
+    moveDown = 3
+    pushLeft = 4
+    pushUp = 5
+    pushRight = 6
+    pushDown = 7
+
+    def IsMove(opt) -> bool:
+        return opt in [Operation.moveLeft, Operation.moveDown, Operation.moveRight, Operation.moveUp]
+
+    def IsPush(opt) -> bool:
+        return opt in [Operation.pushLeft, Operation.pushDown, Operation.pushRight, Operation.pushUp]
 
 
 class BoxState:
     def __init__(
-        self, playerPoint: tuple[int, int], boxPoint: tuple[int, int], moveList: list = [], bookMap: list = []
+        self,
+        boxPoint: tuple[int, int],
+        playerPoint: tuple[int, int],
+        moveList: list = [],
+        bookMap: list = [],
+        visMap: list = [],
     ) -> None:
         self.boxPoint = boxPoint
         self.playerPoint = playerPoint
-        self.moveList = moveList
-        self.bookMap = bookMap.copy()
+        self.moveList = moveList.copy()
+        ta = [[0] * matrixSize for _ in range(matrixSize)]
+        if bookMap != []:
+            for i in range(matrixSize):
+                for j in range(matrixSize):
+                    ta[i][j] = bookMap[i][j]
+        self.bookMap = ta
+        tb = [[0] * matrixSize for _ in range(matrixSize)]
+        if visMap != []:
+            for i in range(matrixSize):
+                for j in range(matrixSize):
+                    tb[i][j] = visMap[i][j]
+        self.visMap = tb
 
     def __lt__(self, other):
-        return len(self.moveList) > len(other.moveList)
+        return len(self.moveList) < len(other.moveList)
 
     def Step(self) -> int:
         return len(self.moveList)
@@ -29,7 +57,12 @@ class PlayerState:
     def __init__(self, playerPoint: tuple[int, int], moveList: list = [], bookMap: list = []) -> None:
         self.playerPoint = playerPoint
         self.moveList = moveList.copy()
-        self.bookMap = bookMap.copy()
+        temp = [[0] * matrixSize for _ in range(matrixSize)]
+        if bookMap != []:
+            for i in range(matrixSize):
+                for j in range(matrixSize):
+                    temp[i][j] = bookMap[i][j]
+        self.bookMap = temp
 
     def __lt__(self, other):
         return len(self.moveList) < len(other.moveList)
@@ -39,20 +72,15 @@ startPoint = (0, 0)
 endPoint = (0, 0)
 boxPoint = (0, 0)
 
-matrixSize = 0
 sokobanMap = []
-bookMap = []
-visMap = []
 
 moveQueue = []
 
 
 def Init(size: int = 5):
-    global matrixSize, sokobanMap, bookMap, visMap
+    global matrixSize, sokobanMap
     matrixSize = size
     sokobanMap = [[0] * matrixSize for _ in range(matrixSize)]
-    bookMap = [[0] * matrixSize for _ in range(matrixSize)]
-    visMap = [[0] * matrixSize for _ in range(matrixSize)]
 
 
 def SetStart(x: int, y: int):
@@ -74,63 +102,73 @@ def SetBarrier(x: int, y: int):
     sokobanMap[x][y] = 1
 
 
-def PlayerSolve(targetPoint: tuple[int, int], startPoint: tuple[int, int]) -> list:
-    global bookMap
+def PlayerSolve(
+    targetPoint: tuple[int, int],
+    startPoint: tuple[int, int],
+    bookMap: list,
+) -> list:
+    global sokobanMap
     q = Queue()
-    q.put(PlayerState(startPoint, [], [[0] * matrixSize for _ in range(matrixSize)]))
+    ans = PriorityQueue()
+    q.put(PlayerState(startPoint, [], bookMap))
     n = [
-        [1, 0, Orientation.right],
-        [0, 1, Orientation.down],
-        [-1, 0, Orientation.left],
-        [0, -1, Orientation.up],
+        [1, 0, Operation.moveRight],
+        [0, 1, Operation.moveDown],
+        [-1, 0, Operation.moveLeft],
+        [0, -1, Operation.moveUp],
     ]
     while not q.empty():
         temp = q.get()
+        temp.bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 1
         if temp.playerPoint == targetPoint:
-            # print(temp.moveList)
-            # print(targetPoint)
+            ans.put(temp)
             continue
-        bookMap = temp.bookMap
-        bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 1
         for o in n:
             tx = temp.playerPoint[0] + o[0]
             ty = temp.playerPoint[1] + o[1]
             if tx < 0 or tx >= matrixSize or ty < 0 or ty >= matrixSize:
                 continue
-            if sokobanMap[tx][ty] == 1 or bookMap[tx][ty] == 1:
+            if sokobanMap[tx][ty] == 1 or temp.bookMap[tx][ty] == 1:
                 continue
             temp.moveList.append(o[2])
-            bookMap[tx][ty] = 1
-            ShowTable(bookMap)
-            q.put(PlayerState((tx, ty), temp.moveList, bookMap))
+            temp.bookMap[tx][ty] = 1
+            q.put(PlayerState((tx, ty), temp.moveList, temp.bookMap))
             temp.moveList.pop()
-            bookMap[tx][ty] = 0
-    return []
+            temp.bookMap[tx][ty] = 0
+    if ans.empty():
+        return []
+    t = ans.get()
+    return t.moveList
 
 
-def ShowTable(mat):
+def ShowTable(mat, x=-1, y=-1):
     for i in range(matrixSize):
         c = ""
         for j in range(matrixSize):
-            c += str(mat[j][i]) + " "
+            if x == j and y == i:
+                c += "* "
+            else:
+                c += str(mat[j][i]) + " "
         print(c)
-    print("\n")
+    print()
 
 
 def SokobanSolve() -> list:
-    global visMap, bookMap
-    q = PriorityQueue()
-    q.put(BoxState(startPoint, boxPoint, [], [[0] * matrixSize for _ in range(matrixSize)]))
+    PrintSokobanMap(startPoint, boxPoint)
+    q = Queue()
+    ans = PriorityQueue()
+    q.put(BoxState(boxPoint, startPoint))
     n = [
-        [1, 0, Orientation.right],
-        [0, 1, Orientation.down],
-        [-1, 0, Orientation.left],
-        [0, -1, Orientation.up],
+        [1, 0, Operation.pushRight, Operation.moveLeft],
+        [0, 1, Operation.pushDown, Operation.moveUp],
+        [-1, 0, Operation.pushLeft, Operation.moveRight],
+        [0, -1, Operation.pushUp, Operation.moveDown],
     ]
     while not q.empty():
         temp = q.get()
-        PrintSokobanMap(temp.playerPoint, temp.boxPoint)
+        temp.visMap[temp.boxPoint[0]][temp.boxPoint[1]] = 1
         if temp.boxPoint == endPoint:
+            ans.put(temp)
             continue
         for o in n:
             tx = temp.boxPoint[0] + o[0]
@@ -139,50 +177,81 @@ def SokobanSolve() -> list:
             tmy = temp.boxPoint[1] - o[1]
             if tx < 0 or tx >= matrixSize or ty < 0 or ty >= matrixSize:
                 continue
-            if sokobanMap[tx][ty] == 1 or visMap[tx][ty] > 2:
+            if sokobanMap[tx][ty] == 1 or temp.visMap[tx][ty] >= 1:
                 continue
             if tmx < 0 or tmx >= matrixSize or tmy < 0 or tmy >= matrixSize:
                 continue
             if sokobanMap[tmx][tmy] == 1:
                 continue
-            # bookMap = [[0] * matrixSize for _ in range(matrixSize)]
-            bookMap = temp.bookMap
-            bookMap[temp.boxPoint[0]][temp.boxPoint[1]] = 1
-
-            subMove = PlayerSolve((tmx, tmy), temp.playerPoint)
-
+            temp.bookMap[temp.boxPoint[0]][temp.boxPoint[1]] = 1
+            temp.bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 1
+            subMove = PlayerSolve((tmx, tmy), temp.playerPoint, temp.bookMap)
             if subMove == []:
                 continue
-            bookMap[temp.boxPoint[0]][temp.boxPoint[1]] = 0
-            q.put(BoxState((tx, ty), (tmx, tmy), temp.moveList + subMove, bookMap))
-            visMap[tx][ty] += 1
-    t = q.get()
-    while not q.empty():
-        print("==========")
-        print(t.moveList)
-        print(t.Step())
-        print(t.boxPoint)
-        print()
-        t = q.get()
+
+            temp.bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 0
+            temp.bookMap[temp.boxPoint[0]][temp.boxPoint[1]] = 0
+            temp.visMap[tx][ty] = 1
+            subMove.append(o[2])
+            subMove.append(o[3])
+            q.put(BoxState((tx, ty), (tmx, tmy), temp.moveList + subMove, temp.bookMap, temp.visMap))
+
+            temp.visMap[tx][ty] = 0
+    if ans.empty():
+        return []
+    unoptList = ans.get().moveList
+    optList = OptimizePath(unoptList)
+    return optList
+
+
+def OptimizePath(unoptList: list) -> list:
+    tempList = []
+    buff = []
+    dic = {
+        Operation.pushLeft: Operation.moveLeft,
+        Operation.pushUp: Operation.moveUp,
+        Operation.pushRight: Operation.moveRight,
+        Operation.pushDown: Operation.moveDown,
+    }
+
+    optList = []
+    for i in unoptList:
+        if Operation.IsMove(i):
+            buff.append(i)
+        elif Operation.IsPush(i):
+            tempList.append(buff.copy())
+            buff.clear()
+            buff.append(i)
+    tempList.append(buff.copy())
+    for i in tempList:
+        if Operation.IsPush(i[0]):
+            head = i[0]
+            optList.append(head)
+            if dic[head] in i:
+                flag = True
+                for j in range(2, len(i)):
+                    if flag and i[j] == dic[head]:
+                        flag = False
+                        continue
+                    optList.append(i[j])
+        else:
+            for j in i:
+                optList.append(j)
+    return optList
 
 
 def PrintSokobanMap(playerPoint: tuple[int, int], boxPoint: tuple[int, int]) -> None:
     print()
-    c = "  "
-    for i in range(matrixSize):
-        c += str(i) + " "
-    print(c)
-
-    printMap = [["* "] * matrixSize for _ in range(matrixSize)]
+    printMap = [["⬜ "] * matrixSize for _ in range(matrixSize)]
     for i in range(matrixSize):
         for j in range(matrixSize):
             if sokobanMap[i][j] == 1:
-                printMap[i][j] = "■ "
-    printMap[endPoint[0]][endPoint[1]] = "x "
-    printMap[playerPoint[0]][playerPoint[1]] = "@ "
-    printMap[boxPoint[0]][boxPoint[1]] = "# "
+                printMap[i][j] = "🛑 "
+    printMap[endPoint[0]][endPoint[1]] = "⭕ "
+    printMap[playerPoint[0]][playerPoint[1]] = "😋 "
+    printMap[boxPoint[0]][boxPoint[1]] = " "
     for i in range(matrixSize):
-        c = str(i) + " "
+        c = ""
         for j in range(matrixSize):
             c += printMap[j][i]
         print(c)
@@ -190,15 +259,22 @@ def PrintSokobanMap(playerPoint: tuple[int, int], boxPoint: tuple[int, int]) -> 
 
 
 if __name__ == "__main__":
-    Init()
-    SetStart(3, 1)
-    SetBox(2, 3)
-    SetEnd(1, 0)
+    # Init()
+    # SetStart(3, 1)
+    # SetBox(2, 3)
+    # SetEnd(1, 0)
+
+    # SetBarrier(0, 1)
+    # SetBarrier(0, 3)
+    # SetBarrier(2, 1)
+    # SetBarrier(2, 2)
+
+    Init(4)
+    SetStart(0, 0)
+    SetBox(1, 1)
+    SetEnd(2, 2)
 
     SetBarrier(0, 1)
-    SetBarrier(0, 3)
-    SetBarrier(2, 1)
-    SetBarrier(2, 2)
 
-    # print(SokobanSolve())
-    SokobanSolve()
+    print(SokobanSolve())
+    # SokobanSolve()
