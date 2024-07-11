@@ -3,6 +3,7 @@ import time
 from collections import deque
 import CameraService
 import Sokoban
+import ImOutput
 
 # 设置GPIO口为BCM编码方式
 GPIO.setmode(GPIO.BCM)
@@ -385,7 +386,7 @@ delayTime2 = 0  # 小车倒车转偏移量（时间）
 
 # 向前移动一格 todo
 def move_one():
-    print("开始：move_one函数")
+    ImOutput.Out.Println("开始: move_one函数")
     runInTime(10, 10, 0.2)
 
     lineCount = 0
@@ -408,7 +409,7 @@ def move_one():
                 lineCount = lineCount + 1
             if lineCount == 3:
                 lockInTime(2, 2, 0.5)
-                print("结束：move_one函数")
+                ImOutput.Out.Println("结束: move_one函数")
                 return 2
 
         # 0111,0011
@@ -453,14 +454,14 @@ def turn_left():
     global delayTime
     global delayTime2
 
-    print("开始:原地左转")
+    ImOutput.Out.Println("开始: 原地左转")
     lineCount = 0
     lineCountF = False
     backInTime(20, 20, 0.1 + delayTime2)
 
     spin_leftInTime(20, 20, 0.7 + delayTime)
 
-    print("spin左转")
+    ImOutput.Out.Println("spin左转")
 
     spin_left(15, 15)
 
@@ -471,7 +472,7 @@ def turn_left():
         R1 = 1 if GPIO.input(TrackSensorRightPin2) else 0
 
         if L1 == 0 and L2 == 0 and R2 == 0 and R1 == 0:
-            print("全黑,退出巡线模式")
+            ImOutput.Out.Println("全黑,退出巡线模式")
             brake()
             return 2
 
@@ -531,14 +532,14 @@ def turn_right():
     global delayTime
     global delayTime2
 
-    print("开始:原地右转")
+    ImOutput.Out.Println("开始: 原地右转")
     lineCount = 0
     lineCountF = False
     backInTime(20, 20, 0.1 + delayTime2)
 
     spin_rightInTime(20, 20, 0.7 + delayTime)
 
-    print("spin右转")
+    ImOutput.Out.Println("spin右转")
 
     spin_right(15, 15)
 
@@ -549,7 +550,7 @@ def turn_right():
         R1 = 1 if GPIO.input(TrackSensorRightPin2) else 0
 
         if L1 == 0 and L2 == 0 and R2 == 0 and R1 == 0:
-            print("全黑,退出巡线模式")
+            ImOutput.Out.Println("全黑,退出巡线模式")
             brake()
             return 2
 
@@ -632,7 +633,7 @@ def push_box():
                 lineCount = lineCount + 1
             if lineCount == 5:
                 lockInTime(2, 2, 0.5)
-                print("结束：push部分函数")
+                ImOutput.Out.Println("结束: push部分函数")
                 break
 
         # 0111,0011
@@ -690,7 +691,7 @@ def push_box():
                 lineCount2 = lineCount2 + 1
             if lineCount2 == 2:
                 lockInTime(2, 2, 0.5)
-                print("结束：push函数")
+                ImOutput.Out.Println("结束: push函数")
                 break
 
         if L1 == 0 and R1 == 1:
@@ -738,19 +739,19 @@ def moveto(dir: int):
 
     # 检测是否会越界,会则直接退出函数
     if dir == 0 and row == 0:
-        print("目标位置越界")
+        ImOutput.Out.Println("目标位置越界")
         print("结束：moveto函数 dir:", dir)
         return 0
     if dir == 1 and column == column_max:
-        print("目标位置越界")
+        ImOutput.Out.Println("目标位置越界")
         print("结束：moveto函数 dir:", dir)
         return 0
     if dir == 2 and row == row_max:
-        print("目标位置越界")
+        ImOutput.Out.Println("目标位置越界")
         print("结束：moveto函数 dir:", dir)
         return 0
     if dir == 3 and column == 0:
-        print("目标位置越界")
+        ImOutput.Out.Println("目标位置越界")
         print("结束：moveto函数 dir:", dir)
         return 0
 
@@ -773,7 +774,7 @@ def moveto(dir: int):
     # 有障碍物(35cm内),返回-1
     if dist <= 35:
         # if False:
-        print("发现障碍物，不能前进")
+        ImOutput.Out.Println("发现障碍物，不能前进")
         print("Row:", row, " Col:", column, " Dir:", dir_code)
         print("结束：moveto函数 dir:", dir)
         return -1
@@ -791,7 +792,7 @@ def moveto(dir: int):
             row += 1
         if dir == 3:
             column -= 1
-        print("向目标方向移动完成")
+        ImOutput.Out.Println("向目标方向移动完成")
         print("Row:", row, " Col:", column, " Dir:", dir_code)
         print("结束：moveto函数 dir:", dir)
         return 1
@@ -843,17 +844,31 @@ def bfs_explore_map():
                     moveto(back_dir)
                 elif result == -1:
                     dic = {CameraService.ObjectType.barrier: "O", CameraService.ObjectType.box: "B"}
-                    print("前有阻挡")
-                    time.sleep(2)
+                    ImOutput.Out.Println("前有阻挡")
+                    ImOutput.Out.Println("otto: 卧槽！冰！")
+                    while CameraService.Service.frontObject is CameraService.ObjectType.null:
+                        ImOutput.Out.Println("等待识别")
+                        time.sleep(0.2)
                     # 碰到障碍物，标记为障碍物
                     ######## 注意这里应该调用opencv函数判断是箱子还是障碍物
                     # 这里先全都当作障碍物
-                    if CameraService.Service.frontObject is not CameraService.ObjectType.null:
-                        map_grid[new_row][new_column] = dic[CameraService.Service.frontObject]
+                    map_grid[new_row][new_column] = dic[CameraService.ArucoModule.frontObject]
 
     bfs(row, column, dir_code)
     return map_grid
 
+def MoveAsPath(callback=None):
+    for item in path:
+        ImOutput.Out.Println("otto: 冲刺！冲刺！")
+        if item > 3:
+            ImOutput.Out.Println("otto: 冲！")
+            moveto(item % 4)
+            push_box()
+        else:
+            moveto(item % 4)
+        if callback is not None:
+            callback()
+    ImOutput.Out.Println("otto: 哇哦！")
 
 ##################################################################################
 # 入口函数
@@ -862,14 +877,19 @@ if __name__ == "__main__":
     # turn_left()
     inputt = input("请输入小车原地转偏移量（时间）:")
     delayTime = float(inputt)
+
     inputtt = input("请输入小车倒车转偏移量（时间）:")
     delayTime2 = float(inputtt)
+
     input1 = input("输入小车起始朝向: ")
     dir_code = int(input1)
+
     input2 = input("输入小车所在行: ")
     row = int(input2)
+
     input3 = input("输入小车所在列: ")
     column = int(input3)
+    
     endY = int(input("输入终点行: "))
     endX = int(input("输入终点列: "))
     CameraService.Service.Start()
@@ -881,13 +901,7 @@ if __name__ == "__main__":
     Sokoban.SetEnd(endX, endY)
 
     ans = Sokoban.SokobanSolve()
-    print(ans)
 
     path = Sokoban.Prase(ans)
 
-    for item in path:
-        if item > 3:
-            moveto(item % 4)
-            push_box()
-        else:
-            moveto(item % 4)
+    MoveAsPath()

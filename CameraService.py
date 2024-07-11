@@ -2,9 +2,9 @@ from enum import Enum
 import threading
 import cv2
 import cv2.aruco as aruco
+import pyzbar.pyzbar as pyzbar
 import time
-
-arucoCodeList = [0, 1]
+import ImOutput
 
 
 class ObjectType(Enum):
@@ -13,56 +13,116 @@ class ObjectType(Enum):
     null = 2
 
 
-def IsInCodeList(ids: list) -> ObjectType:
-    if ids is None:
-        return ObjectType.null
-    id_to_type = {
-        arucoCodeList[0]: ObjectType.barrier,
-        arucoCodeList[1]: ObjectType.box,
+class GestureModule:
+    enable = False
+
+    APP_ID = "你的 App ID"
+    API_KEY = "你的 Api Key"
+    SECRET_KEY = "你的 Secret Key"
+
+    types = {
+        "one": False,
+        "two": False,
+        "there": False,
+        "four": False,
+        "five": False,
+        "six": False,
+        "seven": False,
+        "eight": False,
+        "nine": False,
+        "Fist": False,
+        "OK": False,
+        "Prayer": False,
+        "Congratulation": False,
+        "Honour": False,
+        "Heart_single": False,
+        "Thumb_up": False,
+        "Thumb_down": False,
+        "ILY": False,
+        "Palm_up": False,
+        "Heart_1": False,
+        "Heart_2": False,
+        "Heart_3": False,
+        "Rock": False,
+        "Insult": False,
     }
-    for id in ids:
-        if id[0] in id_to_type:
-            print(id_to_type[id[0]])
-            return id_to_type[id[0]]
-    return ObjectType.null
+    gesture = ""
 
 
-def ScanHasArucoCode(mat, scale: float = 1):
-    frame = mat
-    frame = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-    # parameters = aruco.DetectorParameters()
-    parameters = aruco.DetectorParameters_create()
-    # detector = aruco.ArucoDetector(aruco_dict, parameters)
-    # corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-    aruco.drawDetectedMarkers(frame, corners, ids)
-    cv2.imshow("Aruco", frame)
-    return IsInCodeList(ids)
+class QRCodeModule:
+    qrCodeInfo = None
+
+    def ScanQRCode(mat):
+        QRCodeModule.qrCodeInfo = None
+        frame = mat
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        barcodes = pyzbar.decode(gray)
+        for barcode in barcodes:
+            (x, y, w, h) = barcode.rect
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (225, 225, 225), 2)
+            barcodeData = barcode.data.decode("utf-8")
+            QRCodeModule.qrCodeInf = barcodeData
+        ImOutput.Out.Println("QRCodeScanModule: 检测到二维码")
+        return frame
+
+
+class ArucoModule:
+    arucoCodeList = [0, 1]
+    frontObject = ObjectType.null
+
+    def IsInCodeList(ids: list):
+        if ids is None:
+            ArucoModule.frontObject = ObjectType.null
+        switch = {
+            ArucoModule.arucoCodeList[0]: ObjectType.barrier,
+            ArucoModule.arucoCodeList[1]: ObjectType.box,
+        }
+        for id in ids:
+            if id[0] in switch:
+                ImOutput.Out.Println("ArucoModule: 识别物体为 " + str(switch[id[0]]))
+
+                ArucoModule.frontObject = switch[id[0]]
+        ArucoModule.frontObject = ObjectType.null
+
+    def ScanArucoCode(mat):
+        frame = mat
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        # parameters = aruco.DetectorParameters()
+        parameters = aruco.DetectorParameters_create()
+        # detector = aruco.ArucoDetector(aruco_dict, parameters)
+        # corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+        aruco.drawDetectedMarkers(frame, corners, ids)
+        ArucoModule.IsInCodeList(ids)
+        return frame
 
 
 class Service:
+    enable = False
+    enableQRCodeModule = False
+    showCamera = False
+    wait = 10
     thread = None
     frame = None
     video = None
-    enable = False
+    scale = 0.5
     fps = 0
     size = (0, 0)
-
-    frontObject = ObjectType.null
-
-    qrCodeCallback = None
-    qrCodeFlag = False
-    qrCodeInfo = ""
 
     def ScanLoop():
         if not Service.enable:
             return
         while Service.enable:
-            ret, Service.frame = Service.video.read()
-            Service.frontObject = ScanHasArucoCode(Service.frame, 0.5)
-            cv2.waitKey(10)
+            ret, temp = Service.video.read()
+            temp = cv2.resize(temp, None, fx=Service.scale, fy=Service.scale, interpolation=cv2.INTER_CUBIC)
+            temp = ArucoModule.ScanArucoCode(temp)
+            if Service.enableQRCodeModule:
+                temp = QRCodeModule.ScanQRCode(temp)
+            if Service.showCamera:
+                cv2.imshow("Camera", temp)
+            Service.frame = temp
+            cv2.waitKey(Service.wait)
         Service.video.release()
 
     def Start(api=cv2.CAP_ANY):
@@ -74,14 +134,14 @@ class Service:
             int(Service.video.get(cv2.CAP_PROP_FRAME_HEIGHT)),
         )
         ret, Service.frame = Service.video.read()
+        Service.frame = cv2.resize(
+            Service.frame, None, fx=Service.scale, fy=Service.scale, interpolation=cv2.INTER_CUBIC
+        )
         Service.thread = threading.Thread(target=Service.ScanLoop)
         Service.thread.start()
 
     def Stop():
         Service.enable = False
-
-    def __init__(self) -> None:
-        pass
 
 
 if __name__ == "__main__":

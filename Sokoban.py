@@ -1,5 +1,6 @@
 from enum import Enum
 from queue import PriorityQueue, Queue
+import ImOutput
 
 matrixSize = 0
 
@@ -19,6 +20,15 @@ class Operation(Enum):
 
     def IsPush(opt) -> bool:
         return opt in [Operation.pushLeft, Operation.pushDown, Operation.pushRight, Operation.pushUp]
+
+    def ToMove(opt):
+        switchToMove = {
+            Operation.pushLeft: Operation.moveLeft,
+            Operation.pushUp: Operation.moveUp,
+            Operation.pushRight: Operation.moveRight,
+            Operation.pushDown: Operation.moveDown,
+        }
+        return switchToMove[opt]
 
 
 class BoxState:
@@ -154,7 +164,8 @@ def ShowTable(mat, x=-1, y=-1):
 
 
 def SokobanSolve():
-    PrintSokobanMap(startPoint, boxPoint)
+    ImOutput.Out.Println("Sokoban: 开始求解")
+    # ImPrintSokobanMap(startPoint, boxPoint)
     q = Queue()
     ans = PriorityQueue()
     q.put(BoxState(boxPoint, startPoint))
@@ -205,6 +216,7 @@ def SokobanSolve():
 
 
 def OptimizePath(unoptList: list) -> list:
+    ImOutput.Out.Println("Sokoban: 最优化路线")
     tempList = []
     buff = []
     dic = {
@@ -256,6 +268,23 @@ def PrintSokobanMap(playerPoint, boxPoint) -> None:
             c += printMap[j][i]
         print(c)
     print()
+
+
+def ImPrintSokobanMap(playerPoint, boxPoint) -> None:
+    printMap = [["* "] * matrixSize for _ in range(matrixSize)]
+    for i in range(matrixSize):
+        for j in range(matrixSize):
+            if sokobanMap[i][j] == 1:
+                printMap[i][j] = "障 "
+    printMap[endPoint[0]][endPoint[1]] = "终 "
+    printMap[playerPoint[0]][playerPoint[1]] = "人 "
+    printMap[boxPoint[0]][boxPoint[1]] = "箱 "
+    for i in range(matrixSize):
+        c = ""
+        for j in range(matrixSize):
+            c += printMap[j][i]
+        ImOutput.Out.Println(c)
+    ImOutput.Out.Println()
 
 
 def LoadFromMatrix(mat):

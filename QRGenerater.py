@@ -14,6 +14,18 @@ class ButtonState(Enum):
 
 
 class MapButton:
+    stateToLable = {
+        ButtonState.null: "",
+        ButtonState.start: "Start",
+        ButtonState.end: "End",
+        ButtonState.box: "Box",
+        ButtonState.barrier: "Barrier",
+    }
+
+    def SetState(self, state):
+        self.buttonState = state
+        dpg.configure_item(self.buttonId, label=MapButton.stateToLable[self.buttonState])
+
     def __ButtonClick_Callback(self, sender, data):
         swich = {
             ButtonState.null: ButtonState.start,
@@ -22,22 +34,9 @@ class MapButton:
             ButtonState.box: ButtonState.barrier,
             ButtonState.barrier: ButtonState.null,
         }
-        # stateToLable = {
-        #     ButtonState.null: "",
-        #     ButtonState.start: "🚩",
-        #     ButtonState.end: "🏁",
-        #     ButtonState.box: "📦",
-        #     ButtonState.barrier: "🚧",
-        # }
-        stateToLable = {
-            ButtonState.null: "",
-            ButtonState.start: "Start",
-            ButtonState.end: "End",
-            ButtonState.box: "Box",
-            ButtonState.barrier: "Barrier",
-        }
+
         self.buttonState = swich[self.buttonState]
-        dpg.configure_item(self.buttonId, label=stateToLable[self.buttonState])
+        dpg.configure_item(self.buttonId, label=MapButton.stateToLable[self.buttonState])
         self.buttonCallback(sender, data)
 
     def __init__(self, size: int = 75, callback=None):
@@ -50,7 +49,7 @@ class MapButton:
 class MapSettingWindow:
     def __init__(self) -> None:
         self.__components = {}
-        self.__stateMatrix = []
+        self.__buttonMatrix = []
 
     def RegComponent(self, name: str) -> int:
         self.__components[name] = dpg.generate_uuid()
@@ -65,16 +64,21 @@ class MapSettingWindow:
     def ConfigComponent(self, name: str, **kwargs: any) -> None:
         dpg.configure_item(self.__components[name], **kwargs)
 
+    def ClearState(self):
+        for i in self.__buttonMatrix:
+            for j in i:
+                j.SetState(ButtonState.null)
+
     def __SetMapSizeSlider_Callback(self, sender, data):
         dpg.delete_item(item=self.__components["MapView"], children_only=True)
         size = data
         unitSize = 360 / size - 5
-        self.__stateMatrix = []
+        self.__buttonMatrix = []
         for i in range(size):
-            self.__stateMatrix.append([])
+            self.__buttonMatrix.append([])
             with dpg.group(horizontal=True, horizontal_spacing=5, parent=self.__components["MapView"]):
                 for j in range(size):
-                    self.__stateMatrix[i].append(MapButton(unitSize, self.__GenerateQR_Callback))
+                    self.__buttonMatrix[i].append(MapButton(unitSize, self.__GenerateQR_Callback))
 
     def __GenerateData(self):
         size = self.GetComponentValue("SetMapSizeSlider")
@@ -88,11 +92,11 @@ class MapSettingWindow:
         }
         for i in range(size):
             for j in range(size):
-                if self.__stateMatrix[i][j].buttonState == ButtonState.null:
+                if self.__buttonMatrix[i][j].buttonState == ButtonState.null:
                     continue
                 else:
                     s = " %d %d\n" % (j, i)
-                    temp += stateToLable[self.__stateMatrix[i][j].buttonState] + s
+                    temp += stateToLable[self.__buttonMatrix[i][j].buttonState] + s
         return temp
 
     def __GenerateQR_Callback(self, sender, data):
@@ -136,14 +140,14 @@ class MapSettingWindow:
             )
             size = self.GetComponentValue("SetMapSizeSlider")
             unitSize = 360 / size - 5
-            self.__stateMatrix = []
+            self.__buttonMatrix = []
             with dpg.group(horizontal=True):
                 with dpg.child_window(tag=self.RegComponent("MapView"), width=370, height=370):
                     for i in range(size):
-                        self.__stateMatrix.append([])
+                        self.__buttonMatrix.append([])
                         with dpg.group(horizontal=True, horizontal_spacing=5):
                             for j in range(size):
-                                self.__stateMatrix[i].append(MapButton(unitSize, self.__GenerateQR_Callback))
+                                self.__buttonMatrix[i].append(MapButton(unitSize, self.__GenerateQR_Callback))
                 with dpg.child_window(tag=self.RegComponent("QRView"), width=370, height=370):
                     with dpg.plot(width=-1, height=-1, equal_aspects=True):
                         dpg.add_plot_axis(
@@ -165,12 +169,12 @@ class MapSettingWindow:
                                 [0, 456],
                                 [456, 0],
                             )
-            # dpg.add_button(
-            #     label="Generate",
-            #     tag=self.RegComponent("GenerateButton"),
-            #     width=-1,
-            #     callback=self.__GenerateQR_Callback,
-            # )
+            dpg.add_button(
+                label="Clear",
+                tag=self.RegComponent("GenerateButton"),
+                width=-1,
+                callback=self.ClearState,
+            )
 
 
 if __name__ == "__main__":
