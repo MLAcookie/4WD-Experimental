@@ -1,6 +1,7 @@
 from enum import Enum
 import cv2
 import cv2.aruco as aruco
+import cv2.version
 import numpy as np
 
 arucoCodeList = [0, 1]
@@ -16,8 +17,8 @@ def IsInCodeList(ids: list) -> ObjectType:
     if ids is None:
         return ObjectType.null
     id_to_type = {
-        arucoCodeList[0]: ObjectType.box,
-        arucoCodeList[1]: ObjectType.barrier,
+        arucoCodeList[0]: ObjectType.barrier,
+        arucoCodeList[1]: ObjectType.box,
     }
     for id in ids:
         if id[0] in id_to_type:
@@ -25,7 +26,7 @@ def IsInCodeList(ids: list) -> ObjectType:
     return ObjectType.null
 
 
-def ScanHasArucoCode(mat: np.matrix, scale: float = 1):
+def ScanHasArucoCode(mat, scale: float = 1):
     frame = mat
     frame = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -38,7 +39,8 @@ def ScanHasArucoCode(mat: np.matrix, scale: float = 1):
 
 
 if __name__ == "__main__":
-    video = cv2.VideoCapture(0)
+    print(cv2.version.opencv_version)
+    video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     fps = video.get(cv2.CAP_PROP_FPS)
     print(fps)
     size = (int(video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -46,7 +48,7 @@ if __name__ == "__main__":
     while True:
         ret, frame = video.read()
         cv2.imshow("A video", ScanHasArucoCode(frame))
-        c = cv2.waitKey(1)
+        c = cv2.waitKey(10)
         if c == 27:
             break
     video.release()

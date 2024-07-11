@@ -175,7 +175,7 @@ class MapSettingWindow:
 
 if __name__ == "__main__":
     dpg.create_context()
-    dpg.create_viewport(title="Test", width=780, height=550)
+    dpg.create_viewport(title="QRCode", width=780, height=550)
     dpg.configure_app(init_file="dpg.ini", load_init_file=True)
     dpg.configure_app(docking=True, docking_space=True)
 

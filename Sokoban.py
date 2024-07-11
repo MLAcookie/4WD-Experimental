@@ -24,23 +24,23 @@ class Operation(Enum):
 class BoxState:
     def __init__(
         self,
-        boxPoint: tuple[int, int],
-        playerPoint: tuple[int, int],
-        moveList: list = [],
-        bookMap: list = [],
-        visMap: list = [],
+        boxPoint,
+        playerPoint,
+        moveList=[],
+        bookMap=None,
+        visMap=None,
     ) -> None:
         self.boxPoint = boxPoint
         self.playerPoint = playerPoint
         self.moveList = moveList.copy()
         ta = [[0] * matrixSize for _ in range(matrixSize)]
-        if bookMap != []:
+        if bookMap is not None:
             for i in range(matrixSize):
                 for j in range(matrixSize):
                     ta[i][j] = bookMap[i][j]
         self.bookMap = ta
         tb = [[0] * matrixSize for _ in range(matrixSize)]
-        if visMap != []:
+        if visMap is not None:
             for i in range(matrixSize):
                 for j in range(matrixSize):
                     tb[i][j] = visMap[i][j]
@@ -54,7 +54,7 @@ class BoxState:
 
 
 class PlayerState:
-    def __init__(self, playerPoint: tuple[int, int], moveList: list = [], bookMap: list = []) -> None:
+    def __init__(self, playerPoint, moveList: list = [], bookMap: list = []) -> None:
         self.playerPoint = playerPoint
         self.moveList = moveList.copy()
         temp = [[0] * matrixSize for _ in range(matrixSize)]
@@ -103,10 +103,10 @@ def SetBarrier(x: int, y: int):
 
 
 def PlayerSolve(
-    targetPoint: tuple[int, int],
-    startPoint: tuple[int, int],
-    bookMap: list,
-) -> list:
+    targetPoint,
+    startPoint,
+    bookMap,
+):
     global sokobanMap
     q = Queue()
     ans = PriorityQueue()
@@ -153,7 +153,7 @@ def ShowTable(mat, x=-1, y=-1):
     print()
 
 
-def SokobanSolve() -> list:
+def SokobanSolve():
     PrintSokobanMap(startPoint, boxPoint)
     q = Queue()
     ans = PriorityQueue()
@@ -240,22 +240,50 @@ def OptimizePath(unoptList: list) -> list:
     return optList
 
 
-def PrintSokobanMap(playerPoint: tuple[int, int], boxPoint: tuple[int, int]) -> None:
+def PrintSokobanMap(playerPoint, boxPoint) -> None:
     print()
-    printMap = [["⬜ "] * matrixSize for _ in range(matrixSize)]
+    printMap = [["* "] * matrixSize for _ in range(matrixSize)]
     for i in range(matrixSize):
         for j in range(matrixSize):
             if sokobanMap[i][j] == 1:
-                printMap[i][j] = "🛑 "
-    printMap[endPoint[0]][endPoint[1]] = "⭕ "
-    printMap[playerPoint[0]][playerPoint[1]] = "😋 "
-    printMap[boxPoint[0]][boxPoint[1]] = "📦 "
+                printMap[i][j] = "X "
+    printMap[endPoint[0]][endPoint[1]] = "O "
+    printMap[playerPoint[0]][playerPoint[1]] = "@ "
+    printMap[boxPoint[0]][boxPoint[1]] = "# "
     for i in range(matrixSize):
         c = ""
         for j in range(matrixSize):
             c += printMap[j][i]
         print(c)
     print()
+
+
+def LoadFromMatrix(mat):
+    size = len(mat)
+    Init(size)
+    for i in range(size):
+        for j in range(size):
+            if mat[j][i] == "O":
+                SetBarrier(i, j)
+            elif mat[j][i] == "B":
+                SetBox(i, j)
+
+
+def Prase(oprationList):
+    dic = {
+        Operation.moveUp: 0,
+        Operation.moveRight: 1,
+        Operation.moveDown: 2,
+        Operation.moveLeft: 3,
+        Operation.pushUp: 4,
+        Operation.pushRight: 5,
+        Operation.pushDown: 6,
+        Operation.pushLeft: 7,
+    }
+    ans = []
+    for i in oprationList:
+        ans.append(dic[i])
+    return ans
 
 
 if __name__ == "__main__":
@@ -276,5 +304,6 @@ if __name__ == "__main__":
 
     SetBarrier(0, 1)
 
-    print(SokobanSolve())
+    l = Prase(SokobanSolve())
+    print(type(l[0]))
     # SokobanSolve()
