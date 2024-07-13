@@ -165,7 +165,7 @@ def ShowTable(mat, x=-1, y=-1):
 
 def SokobanSolve():
     ImOutput.Out.Println("Sokoban: 开始求解")
-    # ImPrintSokobanMap(startPoint, boxPoint)
+    PrintSokobanMap(startPoint, boxPoint)
     q = Queue()
     ans = PriorityQueue()
     q.put(BoxState(boxPoint, startPoint))
@@ -254,14 +254,14 @@ def OptimizePath(unoptList: list) -> list:
 
 def PrintSokobanMap(playerPoint, boxPoint) -> None:
     print()
-    printMap = [["* "] * matrixSize for _ in range(matrixSize)]
+    printMap = [["⬜ "] * matrixSize for _ in range(matrixSize)]
     for i in range(matrixSize):
         for j in range(matrixSize):
             if sokobanMap[i][j] == 1:
-                printMap[i][j] = "X "
-    printMap[endPoint[0]][endPoint[1]] = "O "
-    printMap[playerPoint[0]][playerPoint[1]] = "@ "
-    printMap[boxPoint[0]][boxPoint[1]] = "# "
+                printMap[i][j] = "⛔ "
+    printMap[endPoint[0]][endPoint[1]] = "🏁 "
+    printMap[playerPoint[0]][playerPoint[1]] = "♿ "
+    printMap[boxPoint[0]][boxPoint[1]] = "📦 "
     for i in range(matrixSize):
         c = ""
         for j in range(matrixSize):
@@ -333,6 +333,6 @@ if __name__ == "__main__":
 
     SetBarrier(0, 1)
 
-    l = Prase(SokobanSolve())
-    print(type(l[0]))
+    ans = SokobanSolve()
+    print(ans)
     # SokobanSolve()

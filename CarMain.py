@@ -1,13 +1,11 @@
+# MESA_GL_VERSION_OVERRIDE=4.3
 from enum import Enum
 import dearpygui.dearpygui as dpg
 import ImOutput
 import Sokoban
-
 import time
-
 import CameraService
-
-# import box3
+import box3
 
 
 def Test(callback=None):
@@ -28,6 +26,7 @@ class ButtonState(Enum):
     right = 7
     down = 8
     left = 9
+    fine = 10
 
 
 class MapButton:
@@ -42,6 +41,7 @@ class MapButton:
         ButtonState.right: "→",
         ButtonState.down: "↓",
         ButtonState.left: "←",
+        ButtonState.left: "#",
     }
 
     def __ButtonClick_Callback(self, sender, data):
@@ -172,12 +172,16 @@ class CarUI:
             self.flag = [False, False]
             self.SetComponentValue("Scan_StartPoint_intx", [-1, -1, 0, 0])
             self.SetComponentValue("Scan_EndPoint_intx", [-1, -1, 0, 0])
+            self.SetComponentValue("Solve_StartPoint_intx", [-1, -1, 0, 0])
+            self.SetComponentValue("Solve_EndPoint_intx", [-1, -1, 0, 0])
             ImOutput.Out.Println("已重置起始点/终止点")
             return
         point = data["location"]
         if not self.flag[0]:
             self.scanMapGrid.SetStateAt(point, ButtonState.start)
             self.SetComponentValue("Scan_StartPoint_intx", [point[0], point[1], 0, 0])
+            self.startPoint = point
+            self.SetComponentValue("Solve_StartPoint_intx", [point[0], point[1], 0, 0])
             ImOutput.Out.Println("设置起始点: " + str((point[0], point[1])))
             self.flag[0] = True
         else:
@@ -186,6 +190,7 @@ class CarUI:
                 return
             self.scanMapGrid.SetStateAt(point, ButtonState.end)
             self.SetComponentValue("Scan_EndPoint_intx", [point[0], point[1], 0, 0])
+            self.SetComponentValue("Solve_EndPoint_intx", [point[0], point[1], 0, 0])
             ImOutput.Out.Println("设置终止点: " + str((point[0], point[1])))
             self.flag[1] = True
 
@@ -198,23 +203,24 @@ class CarUI:
             return
         self.ConfigComponent("Scan_WaitGroup", show=True)
         ImOutput.Out.Println("开始扫描...")
-        time.sleep(1)
+        # time.sleep(1)
 
-        # box3.delayTime = self.GetComponentValue("SpinOffset_float")
-        # box3.delayTime2 = self.GetComponentValue("ReverseOffset_float")
-        # switch = {"上": 0, "右": 1, "下": 2, "左": 3}
-        # box3.dir_code = switch[self.GetComponentValue("OriginDirection_combo")]
-        # (box3.row, box3.column) = (startPoint[0], startPoint[1])
+        box3.delayTime = self.GetComponentValue("SpinOffset_float")
+        box3.delayTime2 = self.GetComponentValue("ReverseOffset_float")
+        switch = {"上": 0, "右": 1, "下": 2, "左": 3}
+        box3.dir_code = switch[self.GetComponentValue("OriginDirection_combo")]
+        (box3.column, box3.row) = (startPoint[0], startPoint[1])
         # (box3.endX, box3.endY) = (endPoint[0], endPoint[1])
+        self.endPoint = (endPoint[0], endPoint[1])
 
-        # tempList = box3.bfs_explore_map()
+        tempList = box3.bfs_explore_map()
 
-        tempList = [
-            ["L", "O", "L", "L"],
-            ["O", "L", "L", "L"],
-            ["L", "O", "B", "L"],
-            ["L", "X", "L", "L"],
-        ]
+        # tempList = [
+        #     ["L", "O", "L", "L"],
+        #     ["O", "L", "L", "L"],
+        #     ["L", "O", "B", "L"],
+        #     ["L", "X", "L", "L"],
+        # ]
         self.exploredMap = tempList
         size = len(tempList)
         buttonStateMap = [[ButtonState.null] * size for _ in range(size)]
@@ -241,8 +247,8 @@ class CarUI:
         if not CameraService.Service.enableQRCodeModule:
             ImOutput.Out.Println("请启用二维码功能 ( 开始 >> 启用二维码 )")
             return
-        # qrCodeData = CameraService.QRCodeModule.qrCodeInfo
-        qrCodeData = "4\nStart 0 1\nEnd 2 2\nBox 3 1\n"
+        qrCodeData = CameraService.QRCodeModule.qrCodeInfo
+        # qrCodeData = "4\nStart 0 1\nEnd 2 2\nBox 3 1\n"
 
         if qrCodeData is None:
             ImOutput.Out.Println("未检测到二维码")
@@ -285,23 +291,24 @@ class CarUI:
 
     def __StartSolve_Callback(self, sender, data):
         self.ConfigComponent("Solve_WaitGroup", show=True)
-        self.optPath = [
-            Sokoban.Operation.moveDown,
-            Sokoban.Operation.pushLeft,
-            Sokoban.Operation.moveUp,
-            Sokoban.Operation.moveRight,
-        ]
-        self.startPoint = (2, 2)
-        # Sokoban.LoadFromMatrix(self.exploredMap)
-        # self.optPath = Sokoban.SokobanSolve()
-        # if self.optPath == []:
-        #     ImOutput.Out.Println("otto: 欸, 你怎么似了")
-        #     ImOutput.Out.Println("此情况无解")
-        #     return
+        # self.optPath = [
+        #     Sokoban.Operation.moveDown,
+        #     Sokoban.Operation.pushLeft,
+        #     Sokoban.Operation.moveUp,
+        #     Sokoban.Operation.moveRight,
+        # ]
 
-        # box3.path = Sokoban.Prase(self.optPath)
-        # box3.MoveAsPath()
-        Test(self.__CarMove_Callback)
+        Sokoban.LoadFromMatrix(self.exploredMap)
+        self.optPath = Sokoban.SokobanSolve()
+        if self.optPath == []:
+            ImOutput.Out.Println("otto: 欸, 你怎么似了")
+            ImOutput.Out.Println("此情况无解")
+            return
+
+        box3.path = Sokoban.Prase(self.optPath)
+        box3.MoveAsPath(self.__CarMove_Callback)
+        # Test(self.__CarMove_Callback)
+        self.solveMapGrid.SetStateAt(self.point, ButtonState.fine)
         self.ConfigComponent("Solve_WaitGroup", show=False)
 
     def __CarMove_Callback(self):
@@ -322,7 +329,7 @@ class CarUI:
         current = self.optPath[self.index]
         if Sokoban.Operation.IsPush(current):
             current = Sokoban.Operation.ToMove(current)
-        self.solveMapGrid.SetStateAt((self.point), switchToState[current])
+        self.solveMapGrid.SetStateAt(self.point, switchToState[current])
         self.point = (self.point[0] + switchToOffset[current][0], self.point[1] + switchToOffset[current][1])
         ImOutput.Out.Println("移动，当前坐标为(%d, %d)" % (self.point[0], self.point[1]))
         self.index += 1
@@ -346,22 +353,23 @@ class CarUI:
                                 tag=self.RegComponent("SpinOffset_float"),
                                 label="旋转偏移量",
                                 default_value=0,
-                                max_value=1,
-                                min_value=-1,
+                                max_value=0.25,
+                                min_value=-0.25,
                             )
                             dpg.add_slider_float(
                                 tag=self.RegComponent("ReverseOffset_float"),
                                 label="倒车偏移量",
                                 default_value=0,
-                                max_value=1,
-                                min_value=-1,
+                                max_value=0.25,
+                                min_value=-0.25,
                             )
                             dpg.add_separator()
-                            dpg.add_combo(
+                            dpg.add_text("初始方向")
+                            dpg.add_radio_button(
                                 ("上", "右", "下", "左"),
-                                default_value="右",
+                                horizontal=True,
+                                default_value="上",
                                 tag=self.RegComponent("OriginDirection_combo"),
-                                label="初始方向",
                             )
                             dpg.add_drag_intx(
                                 tag=self.RegComponent("Scan_StartPoint_intx"),
@@ -439,11 +447,16 @@ if __name__ == "__main__":
         CameraService.GestureModule.enable = not CameraService.GestureModule.enable
 
     def ProjectInfo_Callback():
-        ImOutput.Out.Println("本项目基于4WD车型小车, 实现小车自主完成简化版的推箱子小游戏")
-        ImOutput.Out.Println("(也是我们神秘的工程实践项目)")
-        ImOutput.Out.Println("本项目依照CC-BY-SA-3.0协议开源")
-        ImOutput.Out.Println("作者: MLA_cookie, , ")
-        ImOutput.Out.Println("特别感谢: dearpygui, opencv")
+        ImOutput.Out.Println(
+            """
+                             ---关于本项目--------------------------------------------
+                            本项目基于4WD车型小车, 实现小车自主完成简化版的推箱子小游戏
+                            (也是我们神秘的工程实践项目)
+                            本项目依照CC-BY-SA-3.0协议开源
+                            作者: MLA_cookie, , 
+                            特别感谢: dearpygui, opencv
+                             """
+        )
 
     dpg.create_context()
 
@@ -472,13 +485,14 @@ if __name__ == "__main__":
                 default_value=CameraService.Service.enableQRCodeModule,
                 callback=ToggleQRCodeModule_Callback,
             )
-            dpg.add_menu_item(
-                label="启用手势检测",
-                check=True,
-                default_value=CameraService.GestureModule.enable,
-                callback=ToggleGestureModule_Callback,
-            )
+            # dpg.add_menu_item(
+            #     label="启用手势检测",
+            #     check=True,
+            #     default_value=CameraService.GestureModule.enable,
+            #     callback=ToggleGestureModule_Callback,
+            # )
             dpg.add_separator()
+            # dpg.add_menu_item(label="保存布局", callback=lambda: dpg.save_init_file("dpg.ini"))
             dpg.add_menu_item(label="退出")
         with dpg.menu(label="工具"):
             dpg.add_menu_item(label="性能面板", callback=dpg.show_metrics)
@@ -487,8 +501,10 @@ if __name__ == "__main__":
             dpg.add_menu_item(label="关于这个项目", callback=ProjectInfo_Callback)
     CarUI()
     ImOutput.Out.Println("你好")
-    # CameraService.Service.Start()
+    CameraService.Service.Start()
     ImOutput.Out.Println("摄像头服务已启动")
+    box3.init()
+    ImOutput.Out.Println("GPIO初始化")
 
     dpg.create_viewport(title="Simple Sokoban Solver", width=780, height=650)
 

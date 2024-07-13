@@ -13,40 +13,40 @@ class ObjectType(Enum):
     null = 2
 
 
-class GestureModule:
-    enable = False
+# class GestureModule:
+#     enable = False
 
-    APP_ID = "你的 App ID"
-    API_KEY = "你的 Api Key"
-    SECRET_KEY = "你的 Secret Key"
+#     APP_ID = "你的 App ID"
+#     API_KEY = "你的 Api Key"
+#     SECRET_KEY = "你的 Secret Key"
 
-    types = {
-        "one": False,
-        "two": False,
-        "there": False,
-        "four": False,
-        "five": False,
-        "six": False,
-        "seven": False,
-        "eight": False,
-        "nine": False,
-        "Fist": False,
-        "OK": False,
-        "Prayer": False,
-        "Congratulation": False,
-        "Honour": False,
-        "Heart_single": False,
-        "Thumb_up": False,
-        "Thumb_down": False,
-        "ILY": False,
-        "Palm_up": False,
-        "Heart_1": False,
-        "Heart_2": False,
-        "Heart_3": False,
-        "Rock": False,
-        "Insult": False,
-    }
-    gesture = ""
+#     types = {
+#         "one": False,
+#         "two": False,
+#         "there": False,
+#         "four": False,
+#         "five": False,
+#         "six": False,
+#         "seven": False,
+#         "eight": False,
+#         "nine": False,
+#         "Fist": False,
+#         "OK": False,
+#         "Prayer": False,
+#         "Congratulation": False,
+#         "Honour": False,
+#         "Heart_single": False,
+#         "Thumb_up": False,
+#         "Thumb_down": False,
+#         "ILY": False,
+#         "Palm_up": False,
+#         "Heart_1": False,
+#         "Heart_2": False,
+#         "Heart_3": False,
+#         "Rock": False,
+#         "Insult": False,
+#     }
+#     gesture = ""
 
 
 class QRCodeModule:
@@ -61,8 +61,10 @@ class QRCodeModule:
             (x, y, w, h) = barcode.rect
             cv2.rectangle(frame, (x, y), (x + w, y + h), (225, 225, 225), 2)
             barcodeData = barcode.data.decode("utf-8")
-            QRCodeModule.qrCodeInf = barcodeData
-        ImOutput.Out.Println("QRCodeScanModule: 检测到二维码")
+            if QRCodeModule is None:
+                QRCodeModule.qrCodeInfo = barcodeData
+                ImOutput.Out.Println(barcodeData)
+        # ImOutput.Out.Println("QRCodeScanModule: 检测到二维码")
         return frame
 
 
@@ -73,15 +75,16 @@ class ArucoModule:
     def IsInCodeList(ids: list):
         if ids is None:
             ArucoModule.frontObject = ObjectType.null
+            return
         switch = {
             ArucoModule.arucoCodeList[0]: ObjectType.barrier,
             ArucoModule.arucoCodeList[1]: ObjectType.box,
         }
         for id in ids:
             if id[0] in switch:
-                ImOutput.Out.Println("ArucoModule: 识别物体为 " + str(switch[id[0]]))
-
+                # ImOutput.Out.Println("ArucoModule: 识别物体为 " + str(switch[id[0]]))
                 ArucoModule.frontObject = switch[id[0]]
+                return
         ArucoModule.frontObject = ObjectType.null
 
     def ScanArucoCode(mat):
@@ -101,7 +104,7 @@ class ArucoModule:
 class Service:
     enable = False
     enableQRCodeModule = False
-    showCamera = False
+    showCamera = True
     wait = 10
     thread = None
     frame = None
@@ -121,6 +124,8 @@ class Service:
                 temp = QRCodeModule.ScanQRCode(temp)
             if Service.showCamera:
                 cv2.imshow("Camera", temp)
+            else:
+                cv2.destroyWindow("Camera")
             Service.frame = temp
             cv2.waitKey(Service.wait)
         Service.video.release()

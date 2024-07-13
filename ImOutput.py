@@ -7,7 +7,7 @@ class Out:
 
     def __GenStr():
         ans = ""
-        for s in Out.texts:
+        for s in reversed(Out.texts):
             ans = "%s%s" % (ans, s)
         return ans
 

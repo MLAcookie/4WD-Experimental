@@ -408,7 +408,7 @@ def move_one():
                 lineCountF = True
                 lineCount = lineCount + 1
             if lineCount == 3:
-                lockInTime(2, 2, 0.5)
+                lockInTime(4, 4, 0.5)
                 ImOutput.Out.Println("结束: move_one函数")
                 return 2
 
@@ -772,7 +772,7 @@ def moveto(dir: int):
     # 开始超声波检测前方是否有障碍物
     dist = Distance()
     # 有障碍物(35cm内),返回-1
-    if dist <= 35:
+    if dist <= 40:
         # if False:
         ImOutput.Out.Println("发现障碍物，不能前进")
         print("Row:", row, " Col:", column, " Dir:", dir_code)
@@ -845,9 +845,10 @@ def bfs_explore_map():
                 elif result == -1:
                     dic = {CameraService.ObjectType.barrier: "O", CameraService.ObjectType.box: "B"}
                     ImOutput.Out.Println("前有阻挡")
-                    ImOutput.Out.Println("otto: 卧槽！冰！")
-                    while CameraService.Service.frontObject is CameraService.ObjectType.null:
+                    # ImOutput.Out.Println("otto: 卧槽！冰！")
+                    while CameraService.ArucoModule.frontObject is CameraService.ObjectType.null:
                         ImOutput.Out.Println("等待识别")
+                        # ImOutput.Out.Println(CameraService.ArucoModule.frontObject)
                         time.sleep(0.2)
                     # 碰到障碍物，标记为障碍物
                     ######## 注意这里应该调用opencv函数判断是箱子还是障碍物
@@ -856,6 +857,7 @@ def bfs_explore_map():
 
     bfs(row, column, dir_code)
     return map_grid
+
 
 def MoveAsPath(callback=None):
     for item in path:
@@ -869,6 +871,7 @@ def MoveAsPath(callback=None):
         if callback is not None:
             callback()
     ImOutput.Out.Println("otto: 哇哦！")
+
 
 ##################################################################################
 # 入口函数
@@ -889,7 +892,7 @@ if __name__ == "__main__":
 
     input3 = input("输入小车所在列: ")
     column = int(input3)
-    
+
     endY = int(input("输入终点行: "))
     endX = int(input("输入终点列: "))
     CameraService.Service.Start()
