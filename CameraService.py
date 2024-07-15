@@ -1,3 +1,7 @@
+# 本文件定义了一个摄像头服务功能
+# 会维护一个线程来做一些图像识别功能
+# 当小车需要识别一些东西的时候，直接访问线程中的全局静态变量即可，方便开发
+
 from enum import Enum
 import threading
 import cv2
@@ -7,51 +11,18 @@ import time
 import ImOutput
 
 
+# 定义识别的物体类型
 class ObjectType(Enum):
     box = 0
     barrier = 1
     null = 2
 
 
-# class GestureModule:
-#     enable = False
-
-#     APP_ID = "你的 App ID"
-#     API_KEY = "你的 Api Key"
-#     SECRET_KEY = "你的 Secret Key"
-
-#     types = {
-#         "one": False,
-#         "two": False,
-#         "there": False,
-#         "four": False,
-#         "five": False,
-#         "six": False,
-#         "seven": False,
-#         "eight": False,
-#         "nine": False,
-#         "Fist": False,
-#         "OK": False,
-#         "Prayer": False,
-#         "Congratulation": False,
-#         "Honour": False,
-#         "Heart_single": False,
-#         "Thumb_up": False,
-#         "Thumb_down": False,
-#         "ILY": False,
-#         "Palm_up": False,
-#         "Heart_1": False,
-#         "Heart_2": False,
-#         "Heart_3": False,
-#         "Rock": False,
-#         "Insult": False,
-#     }
-#     gesture = ""
-
-
+# 定义二维码识别功能模块
 class QRCodeModule:
     qrCodeInfo = None
 
+    # 使用pyzbar库识别二维码
     def ScanQRCode(mat):
         QRCodeModule.qrCodeInfo = None
         frame = mat
@@ -68,10 +39,13 @@ class QRCodeModule:
         return frame
 
 
+# 定义Aruco码识别模块
 class ArucoModule:
+    # 定义需要识别的Aruco码的Id
     arucoCodeList = [0, 1]
     frontObject = ObjectType.null
 
+    # 判断识别的Aruco码是否在列表中
     def IsInCodeList(ids: list):
         if ids is None:
             ArucoModule.frontObject = ObjectType.null
@@ -87,6 +61,9 @@ class ArucoModule:
                 return
         ArucoModule.frontObject = ObjectType.null
 
+    # 检测是否有Aruco码
+    # 小车的python版本为3.7，且上面最新的opencv版本为4.4.56
+    # 然而，关于Aruco的api在后面的版本中有修改，这里注释的部分是之后版本的写法
     def ScanArucoCode(mat):
         frame = mat
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -101,11 +78,14 @@ class ArucoModule:
         return frame
 
 
+# 定义摄像头服务
 class Service:
+    # 摄像头参数部分
     enable = False
     enableQRCodeModule = False
     showCamera = True
     wait = 10
+    # 摄像头服务变量部分
     thread = None
     frame = None
     video = None
@@ -113,6 +93,7 @@ class Service:
     fps = 0
     size = (0, 0)
 
+    # 线程循环
     def ScanLoop():
         if not Service.enable:
             return
@@ -122,6 +103,8 @@ class Service:
             temp = ArucoModule.ScanArucoCode(temp)
             if Service.enableQRCodeModule:
                 temp = QRCodeModule.ScanQRCode(temp)
+            else:
+                QRCodeModule.qrCodeInfo = ""
             if Service.showCamera:
                 cv2.imshow("Camera", temp)
             else:
@@ -130,6 +113,7 @@ class Service:
             cv2.waitKey(Service.wait)
         Service.video.release()
 
+    # 启动服务
     def Start(api=cv2.CAP_ANY):
         Service.enable = True
         Service.video = cv2.VideoCapture(0, api)
@@ -142,9 +126,11 @@ class Service:
         Service.frame = cv2.resize(
             Service.frame, None, fx=Service.scale, fy=Service.scale, interpolation=cv2.INTER_CUBIC
         )
+        # 新建并启动线程
         Service.thread = threading.Thread(target=Service.ScanLoop)
         Service.thread.start()
 
+    # 关闭服务
     def Stop():
         Service.enable = False
 

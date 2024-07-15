@@ -1,20 +1,17 @@
+# 在VNC环境中，由于此时x11不会指定MESA的OpenGL版本，需要在运行前指定OpenGL版本
+# 需要在运行前加上这句
 # MESA_GL_VERSION_OVERRIDE=4.3
+
+# 这段代码是给小车的main文件，会启动一个使用dearpygui的GUI界面，可以在里面进行一些操作
 from enum import Enum
 import dearpygui.dearpygui as dpg
 import ImOutput
 import Sokoban
-import time
 import CameraService
 import box3
 
 
-def Test(callback=None):
-    for i in range(4):
-        time.sleep(1)
-        if callback is not None:
-            callback()
-
-
+# 定义按钮的状态
 class ButtonState(Enum):
     null = 0
     start = 1
@@ -29,6 +26,7 @@ class ButtonState(Enum):
     fine = 10
 
 
+# 定义GUI中地图的按钮控件
 class MapButton:
     stateToLable = {
         ButtonState.null: "",
@@ -44,7 +42,9 @@ class MapButton:
         ButtonState.left: "#",
     }
 
+    # 定义按钮的回调事件
     def __ButtonClick_Callback(self, sender, data):
+        # 当按钮开启切换状态功能时
         if self.enableSwitch:
             swich = {
                 ButtonState.null: ButtonState.start,
@@ -56,27 +56,37 @@ class MapButton:
 
             self.buttonState = swich[self.buttonState]
             dpg.configure_item(self.buttonId, label=MapButton.stateToLable[self.buttonState])
+        # 执行按钮的其他回调
         if self.buttonCallback is not None:
             self.buttonCallback(sender, {"state": self.buttonState, "location": self.buttonLocation})
 
+    # 设定按钮的状态
     def SetState(self, state):
         self.buttonState = state
         dpg.configure_item(self.buttonId, label=MapButton.stateToLable[self.buttonState])
 
+    # 设定是否启动按钮
     def SetEnable(self, enable):
         dpg.configure_item(self.buttonId, enabled=enable)
 
+    # 按钮控件的构造函数
     def __init__(self, size: int = 75, location=(0, 0), callback=None, enableSwitch=False, enabled=True):
+        # 按钮控件的UUID
         self.buttonId = dpg.generate_uuid()
+        # 设定初始状态
         self.buttonState = ButtonState.null
+        # 表示按钮代表的地图位置
         self.buttonLocation = location
+        # 设定按钮的其他回调
         self.buttonCallback = callback
+        # 是否启用状态切换功能
         self.enableSwitch = enableSwitch
         dpg.add_button(
             tag=self.buttonId, height=size, width=size, callback=self.__ButtonClick_Callback, enabled=enabled
         )
 
 
+# 定义GUI中的地图视图
 class MapGrid:
     def __init__(self, mapSize, buttonCallback=None, initShow=True, buttonEnable=True) -> None:
         self.__components = {}
@@ -133,6 +143,7 @@ class MapGrid:
                         )
 
 
+# 程序主界面
 class CarUI:
     def __init__(self, initShow=True) -> None:
         self.__components = {}
@@ -163,6 +174,7 @@ class CarUI:
     def ConfigComponent(self, name: str, **kwargs: any) -> None:
         dpg.configure_item(self.__components[name], **kwargs)
 
+    # 定义起始/终止点行为
     def __SetPoint_Callback(self, sender, data):
         startPoint = self.GetComponentValue("Scan_StartPoint_intx")
         endPoint = self.GetComponentValue("Scan_EndPoint_intx")
@@ -194,6 +206,7 @@ class CarUI:
             ImOutput.Out.Println("设置终止点: " + str((point[0], point[1])))
             self.flag[1] = True
 
+    # 定义开始扫描行为
     def __StartScan_Callback(self, sender, data):
         startPoint = self.GetComponentValue("Scan_StartPoint_intx")
         endPoint = self.GetComponentValue("Scan_EndPoint_intx")
@@ -203,24 +216,14 @@ class CarUI:
             return
         self.ConfigComponent("Scan_WaitGroup", show=True)
         ImOutput.Out.Println("开始扫描...")
-        # time.sleep(1)
-
         box3.delayTime = self.GetComponentValue("SpinOffset_float")
         box3.delayTime2 = self.GetComponentValue("ReverseOffset_float")
         switch = {"上": 0, "右": 1, "下": 2, "左": 3}
         box3.dir_code = switch[self.GetComponentValue("OriginDirection_combo")]
         (box3.column, box3.row) = (startPoint[0], startPoint[1])
-        # (box3.endX, box3.endY) = (endPoint[0], endPoint[1])
         self.endPoint = (endPoint[0], endPoint[1])
 
         tempList = box3.bfs_explore_map()
-
-        # tempList = [
-        #     ["L", "O", "L", "L"],
-        #     ["O", "L", "L", "L"],
-        #     ["L", "O", "B", "L"],
-        #     ["L", "X", "L", "L"],
-        # ]
         self.exploredMap = tempList
         size = len(tempList)
         buttonStateMap = [[ButtonState.null] * size for _ in range(size)]
@@ -243,6 +246,7 @@ class CarUI:
         self.ConfigComponent("Scan_WaitGroup", show=False)
         ImOutput.Out.Println("扫描完成")
 
+    # 定义从二维码导入行为
     def __ScanQRCode_Callback(self, sender, data):
         if not CameraService.Service.enableQRCodeModule:
             ImOutput.Out.Println("请启用二维码功能 ( 开始 >> 启用二维码 )")
@@ -289,15 +293,9 @@ class CarUI:
 
         ImOutput.Out.Println("已从二维码中导入")
 
+    # 定义开始求解行为
     def __StartSolve_Callback(self, sender, data):
         self.ConfigComponent("Solve_WaitGroup", show=True)
-        # self.optPath = [
-        #     Sokoban.Operation.moveDown,
-        #     Sokoban.Operation.pushLeft,
-        #     Sokoban.Operation.moveUp,
-        #     Sokoban.Operation.moveRight,
-        # ]
-
         Sokoban.LoadFromMatrix(self.exploredMap)
         self.optPath = Sokoban.SokobanSolve()
         if self.optPath == []:
@@ -307,10 +305,10 @@ class CarUI:
 
         box3.path = Sokoban.Prase(self.optPath)
         box3.MoveAsPath(self.__CarMove_Callback)
-        # Test(self.__CarMove_Callback)
         self.solveMapGrid.SetStateAt(self.point, ButtonState.fine)
         self.ConfigComponent("Solve_WaitGroup", show=False)
 
+    # 定义小车移动后同步展示路径的行为
     def __CarMove_Callback(self):
         switchToOffset = {
             Sokoban.Operation.moveLeft: (-1, 0),
@@ -334,6 +332,7 @@ class CarUI:
         ImOutput.Out.Println("移动，当前坐标为(%d, %d)" % (self.point[0], self.point[1]))
         self.index += 1
 
+    # 程序的ui定义
     def Show(self):
         with dpg.window(
             tag=self.RegComponent("MainWindow"),
@@ -449,13 +448,12 @@ if __name__ == "__main__":
     def ProjectInfo_Callback():
         ImOutput.Out.Println(
             """
-                             ---关于本项目--------------------------------------------
-                            本项目基于4WD车型小车, 实现小车自主完成简化版的推箱子小游戏
-                            (也是我们神秘的工程实践项目)
-                            本项目依照CC-BY-SA-3.0协议开源
-                            作者: MLA_cookie, , 
-                            特别感谢: dearpygui, opencv
-                             """
+            ---关于本项目--------------------------------------------
+            本项目基于4WD车型小车, 实现小车自主完成简化版的推箱子小游戏
+            (也是我们神秘的工程实践项目)
+            本项目依照CC-BY-SA-3.0协议开源
+            特别感谢: 我的组员, dearpygui, opencv
+            """
         )
 
     dpg.create_context()

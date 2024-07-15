@@ -1,10 +1,15 @@
+# 定义了简化版推箱子的求解逻辑
+# 大致上的过程是两层BFS，先求解箱子的路径，然后根据箱子的每步移动求出小车的路径
+# 最后合并一些额外的路径，得到一条最优路径
 from enum import Enum
 from queue import PriorityQueue, Queue
 import ImOutput
 
+# 定义地图的大小
 matrixSize = 0
 
 
+# 定义操作
 class Operation(Enum):
     moveLeft = 0
     moveUp = 1
@@ -31,6 +36,7 @@ class Operation(Enum):
         return switchToMove[opt]
 
 
+# 定义箱子求解过程的状态
 class BoxState:
     def __init__(
         self,
@@ -40,6 +46,7 @@ class BoxState:
         bookMap=None,
         visMap=None,
     ) -> None:
+        # 会进行一些矩阵复制操作
         self.boxPoint = boxPoint
         self.playerPoint = playerPoint
         self.moveList = moveList.copy()
@@ -63,6 +70,7 @@ class BoxState:
         return len(self.moveList)
 
 
+# 定义小车单步求解过程的状态
 class PlayerState:
     def __init__(self, playerPoint, moveList: list = [], bookMap: list = []) -> None:
         self.playerPoint = playerPoint
@@ -78,40 +86,46 @@ class PlayerState:
         return len(self.moveList) < len(other.moveList)
 
 
+# 起始点，终点，箱子点
 startPoint = (0, 0)
 endPoint = (0, 0)
 boxPoint = (0, 0)
 
+# 推箱子地图
 sokobanMap = []
 
-moveQueue = []
 
-
+# 初始化
 def Init(size: int = 5):
     global matrixSize, sokobanMap
     matrixSize = size
     sokobanMap = [[0] * matrixSize for _ in range(matrixSize)]
 
 
+# 设定初始位置
 def SetStart(x: int, y: int):
     global startPoint
     startPoint = (x, y)
 
 
+# 设定终点
 def SetEnd(x: int, y: int):
     global endPoint
     endPoint = (x, y)
 
 
+# 设置箱子位置
 def SetBox(x: int, y: int):
     global boxPoint
     boxPoint = (x, y)
 
 
+# 设置障碍物位置
 def SetBarrier(x: int, y: int):
     sokobanMap[x][y] = 1
 
 
+# 定义小车单步路径求解函数
 def PlayerSolve(
     targetPoint,
     startPoint,
@@ -127,10 +141,12 @@ def PlayerSolve(
         [-1, 0, Operation.moveLeft],
         [0, -1, Operation.moveUp],
     ]
+    # BFS遍历所有路径
     while not q.empty():
         temp = q.get()
         temp.bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 1
         if temp.playerPoint == targetPoint:
+            # 有解的情况下加入ans这个优先队列中
             ans.put(temp)
             continue
         for o in n:
@@ -145,24 +161,14 @@ def PlayerSolve(
             q.put(PlayerState((tx, ty), temp.moveList, temp.bookMap))
             temp.moveList.pop()
             temp.bookMap[tx][ty] = 0
+    # 通过优先队列筛选出最优路径
     if ans.empty():
         return []
     t = ans.get()
     return t.moveList
 
 
-def ShowTable(mat, x=-1, y=-1):
-    for i in range(matrixSize):
-        c = ""
-        for j in range(matrixSize):
-            if x == j and y == i:
-                c += "* "
-            else:
-                c += str(mat[j][i]) + " "
-        print(c)
-    print()
-
-
+# 定义箱子路径求解过程
 def SokobanSolve():
     ImOutput.Out.Println("Sokoban: 开始求解")
     PrintSokobanMap(startPoint, boxPoint)
@@ -175,6 +181,7 @@ def SokobanSolve():
         [-1, 0, Operation.pushLeft, Operation.moveRight],
         [0, -1, Operation.pushUp, Operation.moveDown],
     ]
+    # BFS求解所有路径
     while not q.empty():
         temp = q.get()
         temp.visMap[temp.boxPoint[0]][temp.boxPoint[1]] = 1
@@ -203,11 +210,14 @@ def SokobanSolve():
             temp.bookMap[temp.playerPoint[0]][temp.playerPoint[1]] = 0
             temp.bookMap[temp.boxPoint[0]][temp.boxPoint[1]] = 0
             temp.visMap[tx][ty] = 1
+            # 加入强制推箱子，先推一下再退回去
+            # 保证结果可以完成推箱子游戏
             subMove.append(o[2])
             subMove.append(o[3])
             q.put(BoxState((tx, ty), (tmx, tmy), temp.moveList + subMove, temp.bookMap, temp.visMap))
 
             temp.visMap[tx][ty] = 0
+    # 通过优先队列筛选出最优路径
     if ans.empty():
         return []
     unoptList = ans.get().moveList
@@ -215,7 +225,10 @@ def SokobanSolve():
     return optList
 
 
+# 优化路径
 def OptimizePath(unoptList: list) -> list:
+    # 先找push的操作，然后看看之后有没有同方向的move操作
+    # 如果有，删除这个move操作和之前加上的回退操作
     ImOutput.Out.Println("Sokoban: 最优化路线")
     tempList = []
     buff = []
@@ -252,6 +265,7 @@ def OptimizePath(unoptList: list) -> list:
     return optList
 
 
+# 终端中打印地图的函数，纯好玩的
 def PrintSokobanMap(playerPoint, boxPoint) -> None:
     print()
     printMap = [["⬜ "] * matrixSize for _ in range(matrixSize)]
@@ -270,6 +284,7 @@ def PrintSokobanMap(playerPoint, boxPoint) -> None:
     print()
 
 
+# 在GUI终端中打印地图的函数，也是纯好玩的
 def ImPrintSokobanMap(playerPoint, boxPoint) -> None:
     printMap = [["* "] * matrixSize for _ in range(matrixSize)]
     for i in range(matrixSize):
@@ -287,6 +302,7 @@ def ImPrintSokobanMap(playerPoint, boxPoint) -> None:
     ImOutput.Out.Println()
 
 
+# 从box3结果中加载地图
 def LoadFromMatrix(mat):
     size = len(mat)
     Init(size)
@@ -298,6 +314,7 @@ def LoadFromMatrix(mat):
                 SetBox(i, j)
 
 
+# 转换为box3可处理的移动操作序列
 def Prase(oprationList):
     dic = {
         Operation.moveUp: 0,

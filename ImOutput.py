@@ -1,3 +1,5 @@
+# 本文件实现了在dearpygui中的文字输出窗口
+# 在导入后，通过ImOutput.Out.Print()打印出一些信息
 import dearpygui.dearpygui as dpg
 
 

@@ -1,8 +1,8 @@
+# 这个文件定义了一个用来生成可供小车识别的二维码的生成器
+# UI也是拿dearpygui搓的
 import dearpygui.dearpygui as dpg
 from enum import Enum
 import qrcode
-from PIL import Image
-import numpy as np
 
 
 class ButtonState(Enum):
@@ -46,6 +46,7 @@ class MapButton:
         dpg.add_button(tag=self.buttonId, height=size, width=size, callback=self.__ButtonClick_Callback)
 
 
+# 程序主界面以及逻辑
 class MapSettingWindow:
     def __init__(self) -> None:
         self.__components = {}
